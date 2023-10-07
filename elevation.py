@@ -53,9 +53,7 @@ def calculate_elevation_profile(start_point,
     # Calculo las elevaciones de cada punto
     # Cargando la imagen tiff respectiva a ese punto geografico
 
-    tiff_image_of_point = [elevationDataList[0]]
-    geographicDataSource = rasterio.open('./Venezuela-elevation-data' + tiff_image_of_point[0])
-    elevationData = geographicDataSource.read(1)
+    tiff_image_of_point = [""]
 
     for lat, lon in points:
 
@@ -63,42 +61,27 @@ def calculate_elevation_profile(start_point,
         # Punto en el que estoy parado y lo comparo con el archivo
         # Tiff que tengo cargado en memoria
 
-        print("Buscando el tiff file para lat ", lat)
-        print("Buscando el tiff file para lon ", lon)
+        # print("Buscando el tiff file para lat ", lat)
+        # print("Buscando el tiff file para lon ", lon)
         tiff_file = find_tiff_file(lat, lon, elevationDataList)
 
-        print("El tiff file que corresponde con el punto es: ", tiff_file[0])
+        # print("El tiff file que corresponde con el punto es: ", tiff_file[0])
 
         # Si el tiff file cambia, cargo el nuevo tiff file en memoria
         # Para buscar la elevacion en el punto que cae sobre el
 
         if tiff_image_of_point[0] != tiff_file[0]:
 
-            geographicDataSource = rasterio.open('./Venezuela-elevation-data' + tiff_file[0])
+            geographicDataSource = rasterio.open('./Venezuela-elevation-data/' + tiff_file[0])
             elevationData = geographicDataSource.read(1)
             tiff_image_of_point = tiff_file
         
         # Obtengo la elevacion en el archivo tiff que tengo en memoria
 
-        elev = get_elevation(elevationData, geographicDataSource, lat, lon)
+        elev = get_elevation(elevationData, lat, lon, geographicDataSource)
         elevations.append(int(elev))
 
     return {'elevations': elevations, 'linkDistance': distance}
-
-    # for i in range
-    
-    # Cálculo de la elevación para cada punto a lo largo de la línea entre los dos puntos
-    # elevations = []
-    # for i in range(1000):
-    #     fraction = i / 1000.0
-    #     lat = start_point['lat'] + fraction * (end_point['lat'] - start_point['lat'])
-    #     lng = start_point['lng'] + fraction * (end_point['lng'] - start_point['lng'])
-    #     elev = get_elevation(elevationDataList, lat, lng)
-    #     elevations.append(int(elev))
-    
-    # # Devolución de los datos como un arreglo JSON
-
-    # return {'elevations': elevations, 'linkDistance': distance}
 
 def find_tiff_files(lat1, lon1, lat2, lon2, tiff_files_list):
     tiff_files_list = []
@@ -138,7 +121,8 @@ def get_elevation(elevationData,
                   geographicData):
 
     # Transformación de las coordenadas de latitud y longitud a coordenadas de la proyección del archivo GeoTIFF
-    x, y = geographicData.index(lng, lat)
+    # x, y = geographicData.index(lng, lat)
+    x, y = rasterio.transform.rowcol(geographicData.transform, lng, lat)
     
     # Extracción de la elevación del archivo GeoTIFF en las coordenadas especificadas
     elev = elevationData[int(y)][int(x)]

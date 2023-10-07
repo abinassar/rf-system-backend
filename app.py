@@ -47,10 +47,8 @@ def get_tiff_data(carpeta):
         # Agregar el objeto JSON a la lista
         archivos_json.append(info)
     
-    return archivos_json
-
     # Convertir la lista de objetos JSON a una cadena JSON
-    # archivos_json_str = json.dumps(archivos_json, indent=4)
+    archivos_json_str = json.dumps(archivos_json, indent=4)
 
     # # Guardar la cadena JSON en un archivo
     # with open('info_tiff.json', 'w') as archivo_json:
@@ -58,6 +56,8 @@ def get_tiff_data(carpeta):
 
     # # Imprimir la cadena JSON en la consola
     # print(archivos_json_str)
+    return archivos_json
+
 
 # Abre el archivo GeoTIFF y almacena los datos en una variable global
 # with rasterio.open(elevationDataPath) as src:
