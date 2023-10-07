@@ -55,6 +55,8 @@ def calculate_elevation_profile(start_point,
 
     tiff_image_of_point = [""]
 
+    file = open('archivo.txt', 'w')
+
     for lat, lon in points:
 
         # Busco que tiff file le corresponde al
@@ -63,6 +65,9 @@ def calculate_elevation_profile(start_point,
 
         # print("Buscando el tiff file para lat ", lat)
         # print("Buscando el tiff file para lon ", lon)
+
+        file.write("Buscando el tiff file para lat " + str(lat) + '\n')
+        file.write("Buscando el tiff file para lon " + str(lon) + '\n')
         tiff_file = find_tiff_file(lat, lon, elevationDataList)
 
         # print("El tiff file que corresponde con el punto es: ", tiff_file[0])
@@ -71,6 +76,8 @@ def calculate_elevation_profile(start_point,
         # Para buscar la elevacion en el punto que cae sobre el
 
         if tiff_image_of_point[0] != tiff_file[0]:
+
+            file.write("El tiff file a cambiado a: " + tiff_file[0] + '\n')
 
             geographicDataSource = rasterio.open('./Venezuela-elevation-data/' + tiff_file[0])
             elevationData = geographicDataSource.read(1)
