@@ -1,3 +1,7 @@
+Comando para activar environment:
+
+Activar extension de python y el mismo IDE va a asimilar el environment
+
 Comando para correr proyecto backend:
 
 flask --app .\server.py run 

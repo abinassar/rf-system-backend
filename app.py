@@ -1,11 +1,11 @@
 
-from math import atan2
 from flask import Flask, jsonify, request
-from numpy import cos, radians, sin, sqrt
 from flask_cors import CORS
-from elevation import get_elevation, get_tiff_bounds, merge_tiff_files
+from elevation import get_points_between, find_tiff_files, calculate_elevation_profile, get_tiff_bounds, merge_tiff_files
 from atmospherical import attenuationByWaterVapor, GetAtmosphericGasesDataBetween63and350, GetAtmosphericGasesDataMinus57, GetAtmosphericGasesDataBetween57and63
 import rasterio
+import json
+import os
 
 # Ruta al archivo GeoTIFF de elevación descargado
 
@@ -15,11 +15,88 @@ app = Flask(__name__)
 
 global elevationDataPath
 global elevationData
+global venezuelaTiffData
 elevationDataPath = './elevation-profile-data/1.tif'
 
+def get_tiff_data(carpeta):
+    # Lista para almacenar los objetos JSON
+    archivos_json = []
+
+    # Obtener la lista de archivos en la carpeta
+    archivos_tiff = [archivo for archivo in os.listdir(carpeta) if archivo.endswith('.tif')]
+
+    # Iterar sobre los archivos TIFF
+    for archivo in archivos_tiff:
+        # Ruta completa al archivo TIFF
+        archivo_tiff = os.path.join(carpeta, archivo)
+
+        # Obtener los límites geográficos del archivo TIFF
+        with rasterio.open(archivo_tiff) as src:
+            bounds = get_tiff_bounds(src)
+            lon_min, lat_min, lon_max, lat_max = bounds
+
+        # Crear el objeto JSON
+        info = {
+            'nombre_archivo': archivo,
+            'latitud_minima': lat_min,
+            'latitud_maxima': lat_max,
+            'longitud_minima': lon_min,
+            'longitud_maxima': lon_max
+        }
+
+        # Agregar el objeto JSON a la lista
+        archivos_json.append(info)
+    
+    return archivos_json
+
+    # Convertir la lista de objetos JSON a una cadena JSON
+    # archivos_json_str = json.dumps(archivos_json, indent=4)
+
+    # # Guardar la cadena JSON en un archivo
+    # with open('info_tiff.json', 'w') as archivo_json:
+    #     archivo_json.write(archivos_json_str)
+
+    # # Imprimir la cadena JSON en la consola
+    # print(archivos_json_str)
+
 # Abre el archivo GeoTIFF y almacena los datos en una variable global
-with rasterio.open(elevationDataPath) as src:
-    elevationData = src.read(1)
+# with rasterio.open(elevationDataPath) as src:
+#     elevationData = src.read(1)
+#     bounds = get_tiff_bounds(src)
+
+# # bounds es una tupla en el formato (lon_min, lat_min, lon_max, lat_max)
+# lon_min, lat_min, lon_max, lat_max = bounds
+
+# # Imprime los límites geográficos
+# print("Límites geográficos:")
+# print("Latitud mínima:", lat_min)
+# print("Latitud máxima:", lat_max)
+# print("Longitud mínima:", lon_min)
+# print("Longitud máxima:", lon_max)
+
+venezuelaTiffData = get_tiff_data('./Venezuela-elevation-data')
+
+#CONSEGUIR TIFF FILES PARA DOS PUNTOS DE LATITUD Y LONGITUD
+
+# testfiles = find_tiff_files(3.5804,-64.5604, 2.3937,-63.4201, venezuelaTiffData)
+
+# tiff_json = json.dumps(testfiles, indent=4)
+# print(tiff_json)
+
+# TESTEAR PUNTOS ENTRE DOS LATITUDES Y LONGITUDES
+
+# start_lat = 40.7128  # Latitud del punto de partida (Nueva York)
+# start_lon = -74.0060  # Longitud del punto de partida (Nueva York)
+# end_lat = 34.0522  # Latitud del punto de destino (Los Ángeles)
+# end_lon = -118.2437  # Longitud del punto de destino (Los Ángeles)
+# num_points = 1000  # Número de puntos intermedios
+
+# points = get_points_between(start_lat, start_lon, end_lat, end_lon, num_points)
+
+# # Imprimir los puntos intermedios
+# for lat, lon in points:
+#     print("lat ", lat)
+#     print("lon ", lon)
 
 CORS(app)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -67,24 +144,6 @@ def calculateAtmosphericAtenuation(pressure, temperature):
             atenuationsPoints.append(atenuationPoint)
     
     return {'atenuationsPoints': atenuationsPoints}
-
-# Definición de la función que calcula el perfil de elevación
-def calculate_elevation_profile(start_point, end_point):
-    # Cálculo de la distancia entre los dos puntos
-    distance = calculate_distance(start_point, end_point)
-    
-    # Cálculo de la elevación para cada punto a lo largo de la línea entre los dos puntos
-    elevations = []
-    for i in range(1000):
-        fraction = i / 1000.0
-        lat = start_point['lat'] + fraction * (end_point['lat'] - start_point['lat'])
-        lng = start_point['lng'] + fraction * (end_point['lng'] - start_point['lng'])
-        elev = get_elevation(elevationData, src, lat, lng)
-        elevations.append(int(elev))
-    
-    # Devolución de los datos como un arreglo JSON
-
-    return {'elevations': elevations, 'linkDistance': distance}
 
 @app.route('/get_atmospheric_atenuation_water_vapor', methods=['POST'])
 def getWaterVaporAtenuation():
@@ -144,35 +203,19 @@ def merge_tiff_files2():
 # Definición de la ruta de la API
 @app.route('/elevation_profile', methods=['POST'])
 def elevation_profile():
+
     # Obtención de los datos de laty lng de los puntos de inicio y fin de la línea de perfil de elevación
     start_point = request.json['start_point']
     end_point = request.json['end_point']
     
     # Cálculo del perfil de elevación
-    elevation_profile = calculate_elevation_profile(start_point, end_point)
+    elevation_profile = calculate_elevation_profile(start_point, 
+                                                    end_point,
+                                                    venezuelaTiffData)
     
     # Devolución de los datos como un arreglo JSON
     return jsonify(elevation_profile)
     # return jsonify({'elevations': [300, 400]})
-
-# Definición de la función que calcula la distancia entre dos puntos de latitud y longitud
-def calculate_distance(start_point, end_point):
-    # Conversión de las coordenadas de latitud y longitud a radianes
-    lat1 = radians(start_point['lat'])
-    lng1 = radians(start_point['lng'])
-    lat2 = radians(end_point['lat'])
-    lng2 = radians(end_point['lng'])
-    
-    # Cálculo de la distancia utilizando la fórmula de Haversine
-    dlat = lat2 - lat1
-    dlng = lng2 - lng1
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlng / 2)**2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    R = 6371 # Radio de la Tierra en kilómetros
-    distance = R * c
-    
-    # Devolución de la distancia en kilómetros
-    return distance
 
 @app.route("/")
 def main_():

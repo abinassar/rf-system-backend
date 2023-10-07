@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 *.pyo
 .venv
+Venezuela-elevation-data/
+elevation-profile-data/
