@@ -1,11 +1,16 @@
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from elevation import get_points_between, find_tiff_files, calculate_elevation_profile, get_tiff_bounds, merge_tiff_files
+from elevation import calculate_elevation_profile, get_tiff_bounds, merge_tiff_files
 from atmospherical import attenuationByWaterVapor, GetAtmosphericGasesDataBetween63and350, GetAtmosphericGasesDataMinus57, GetAtmosphericGasesDataBetween57and63
 import rasterio
 import json
 import os
+import numpy as np
+import rasterio
+import urllib.request
+import json
+import math
 
 # Ruta al archivo GeoTIFF de elevación descargado
 
@@ -47,56 +52,9 @@ def get_tiff_data(carpeta):
         # Agregar el objeto JSON a la lista
         archivos_json.append(info)
     
-    # Convertir la lista de objetos JSON a una cadena JSON
-    archivos_json_str = json.dumps(archivos_json, indent=4)
-
-    # # Guardar la cadena JSON en un archivo
-    # with open('info_tiff.json', 'w') as archivo_json:
-    #     archivo_json.write(archivos_json_str)
-
-    # # Imprimir la cadena JSON en la consola
-    # print(archivos_json_str)
     return archivos_json
 
-
-# Abre el archivo GeoTIFF y almacena los datos en una variable global
-# with rasterio.open(elevationDataPath) as src:
-#     elevationData = src.read(1)
-#     bounds = get_tiff_bounds(src)
-
-# # bounds es una tupla en el formato (lon_min, lat_min, lon_max, lat_max)
-# lon_min, lat_min, lon_max, lat_max = bounds
-
-# # Imprime los límites geográficos
-# print("Límites geográficos:")
-# print("Latitud mínima:", lat_min)
-# print("Latitud máxima:", lat_max)
-# print("Longitud mínima:", lon_min)
-# print("Longitud máxima:", lon_max)
-
 venezuelaTiffData = get_tiff_data('./Venezuela-elevation-data')
-
-#CONSEGUIR TIFF FILES PARA DOS PUNTOS DE LATITUD Y LONGITUD
-
-# testfiles = find_tiff_files(3.5804,-64.5604, 2.3937,-63.4201, venezuelaTiffData)
-
-# tiff_json = json.dumps(testfiles, indent=4)
-# print(tiff_json)
-
-# TESTEAR PUNTOS ENTRE DOS LATITUDES Y LONGITUDES
-
-# start_lat = 40.7128  # Latitud del punto de partida (Nueva York)
-# start_lon = -74.0060  # Longitud del punto de partida (Nueva York)
-# end_lat = 34.0522  # Latitud del punto de destino (Los Ángeles)
-# end_lon = -118.2437  # Longitud del punto de destino (Los Ángeles)
-# num_points = 1000  # Número de puntos intermedios
-
-# points = get_points_between(start_lat, start_lon, end_lat, end_lon, num_points)
-
-# # Imprimir los puntos intermedios
-# for lat, lon in points:
-#     print("lat ", lat)
-#     print("lon ", lon)
 
 CORS(app)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -203,7 +161,7 @@ def merge_tiff_files2():
 # Definición de la ruta de la API
 @app.route('/elevation_profile', methods=['POST'])
 def elevation_profile():
-
+    
     # Obtención de los datos de laty lng de los puntos de inicio y fin de la línea de perfil de elevación
     start_point = request.json['start_point']
     end_point = request.json['end_point']
