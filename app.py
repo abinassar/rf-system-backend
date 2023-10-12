@@ -59,6 +59,29 @@ venezuelaTiffData = get_tiff_data('./Venezuela-elevation-data')
 CORS(app)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+def calculateAtenuationInFrecuency(pressure, temperature, frecuency):
+
+    atenuationValue = 0;
+
+    if frecuency <= 57:
+
+        atenuationValue = GetAtmosphericGasesDataMinus57(frecuency, pressure, temperature)
+
+    if frecuency > 57 and frecuency < 63:
+
+        atenuationValue = GetAtmosphericGasesDataBetween57and63(frecuency, pressure, temperature)
+
+    if frecuency >= 63 and frecuency <= 350:
+        atenuationValue = GetAtmosphericGasesDataBetween63and350(frecuency, pressure, temperature)
+
+    return {'atenuationValue': atenuationValue}
+
+def calculateWaterVaporAtenuation(pressure, temperature, waterDensity, frecuency):
+
+    atenuationValue = attenuationByWaterVapor(frecuency, pressure, temperature, waterDensity)
+
+    return {'atenuationValue': atenuationValue}
+
 def calculateAtmosphericAtenuation(pressure, temperature):
 
     atenuationsPoints = []
@@ -174,6 +197,27 @@ def elevation_profile():
     # Devolución de los datos como un arreglo JSON
     return jsonify(elevation_profile)
     # return jsonify({'elevations': [300, 400]})
+
+@app.route('/get_specific_atmospheric_atenuation', methods=['POST'])
+def getSpecificAtn():
+
+    pressure = request.json['pressure']
+    temperature = request.json['temperature']
+    frecuency = request.json['frecuency']
+
+    atmosAtn = calculateAtenuationInFrecuency(pressure, temperature, frecuency)
+    return jsonify(atmosAtn)
+
+@app.route('/get_specific_atmospheric_atenuation_water_vapor', methods=['POST'])
+def getSpecificWaterAtn():
+
+    pressure = request.json['pressure']
+    temperature = request.json['temperature']
+    waterDensity = request.json['waterDensity']
+    frecuency = request.json['frecuency']
+
+    atmosAtn = calculateWaterVaporAtenuation(pressure, temperature, waterDensity, frecuency)
+    return jsonify(atmosAtn)
 
 @app.route("/")
 def main_():

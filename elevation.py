@@ -81,6 +81,8 @@ def calculate_elevation_profile(start_point,
         
         # Obtengo la elevacion en el archivo tiff que tengo en memoria
 
+        # TODO: En este caso dem es geographicDataSource
+
         elev = get_elevation(elevationData, lat, lon, geographicDataSource)
         elevations.append(int(elev))
 
@@ -122,13 +124,19 @@ def get_elevation(elevationData,
                   lat, 
                   lng,
                   geographicData):
+    
 
     # Transformación de las coordenadas de latitud y longitud a coordenadas de la proyección del archivo GeoTIFF
     # x, y = geographicData.index(lng, lat)
-    x, y = rasterio.transform.rowcol(geographicData.transform, lng, lat)
+    # x, y = rasterio.transform.rowcol(geographicData.transform, lng, lat)
     
     # Extracción de la elevación del archivo GeoTIFF en las coordenadas especificadas
-    elev = elevationData[int(y)][int(x)]
+    # elev = elevationData[int(y)][int(x)]
+
+    # Esta modificacion genera puntos mas reales
+
+    x, y = geographicData.index(lng, lat)
+    elev = elevationData[x, y]
     
     return elev
     
