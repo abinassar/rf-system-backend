@@ -7,7 +7,12 @@ from math import atan2
 DEM_FILE_PATH = './elevation-profile-data/elevation-profile-Venezuela.tif'
 global elevationData
 
-def get_points_between(start_lat, start_lon, end_lat, end_lon, num_points):
+def get_points_between(start_lat, 
+                       start_lon, 
+                       end_lat, 
+                       end_lon, 
+                       num_points):
+    
     # Convertir los puntos de latitud y longitud a radianes
     start_lat_rad = radians(start_lat)
     start_lon_rad = radians(start_lon)
