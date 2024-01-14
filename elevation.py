@@ -105,7 +105,7 @@ def get_surface_points(lat1,
 
     # Obtengo los n coordenadas paralelas a las principales que me da el usuario
 
-    for i in range(-200, 200):
+    for i in range(-20, 20):
 
         # Declaro la distance en km como el indice entre 100
         # Por ejemplo: 20 / 100 = 0.2 km
@@ -172,6 +172,7 @@ def calculate_elevation_surface_points(start_point,
     # Cargando la imagen tiff respectiva a ese punto geografico
 
     tiff_image_of_point = [""]
+    last_elev = 100
 
     for lat, lon in points:
 
@@ -191,7 +192,6 @@ def calculate_elevation_surface_points(start_point,
 
         if tiff_image_of_point[0] != tiff_file[0]:
 
-
             geographicDataSource = rasterio.open('./Venezuela-elevation-data/' + tiff_file[0])
             elevationData = geographicDataSource.read(1)
             tiff_image_of_point = tiff_file
@@ -202,6 +202,12 @@ def calculate_elevation_surface_points(start_point,
         # TODO: En este caso dem es geographicDataSource
 
         elev = get_elevation(elevationData, lat, lon, geographicDataSource)
+
+        if elev == -32767:
+            elev = last_elev
+
+        last_elev = elev
+
         surfaceCoordinate = {
             'x': xCoordinate,
             'y': start_yCoord,
