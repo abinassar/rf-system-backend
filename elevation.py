@@ -1,4 +1,6 @@
 import rasterio
+import math
+import numpy
 from rasterio.merge import merge
 from numpy import cos, radians, sin, sqrt, linspace, degrees
 from math import atan2
@@ -92,6 +94,172 @@ def calculate_elevation_profile(start_point,
         elevations.append(int(elev))
 
     return {'elevations': elevations, 'linkDistance': distance}
+
+def get_surface_points(lat1,
+                       lng1,
+                       lat2,
+                       lng2,
+                       venezuelaTiffData):
+
+    surfacePointsList = []
+
+    # Obtengo los n coordenadas paralelas a las principales que me da el usuario
+
+    for i in range(-200, 200):
+
+        # Declaro la distance en km como el indice entre 100
+        # Por ejemplo: 20 / 100 = 0.2 km
+        distance = i/100
+
+        parallel_points = get_parallel_points(lat1, 
+                                              lng1, 
+                                              lat2, 
+                                              lng2,
+                                              2,
+                                              distance)
+        
+        # Obtuve las coordenadas de los puntos paralelos a la linea principal
+
+        start_point = {
+            'lat': parallel_points[0][0],
+            'lng': parallel_points[0][1]
+        }
+
+        end_point = {
+            'lat': parallel_points[1][0],
+            'lng': parallel_points[1][1]
+        }
+
+        # Con ello obtengo los puntos de superficie
+
+        surfacePoints = calculate_elevation_surface_points(start_point,
+                                                           end_point,
+                                                           venezuelaTiffData,
+                                                           distance)
+        
+        surfacePointsObject = {
+            'surfacePoints': surfacePoints,
+            'startPoint': start_point,
+            'endPoint': end_point
+        }
+
+        surfacePointsList.append(surfacePointsObject)
+    
+    return {'surfaceCoordinates': surfacePointsList}
+
+def calculate_elevation_surface_points(start_point, 
+                                       end_point,
+                                       elevationDataList,
+                                       xCoordinate):
+    
+    # Cálculo de la distancia entre los dos puntos
+    distance = calculate_distance(start_point, end_point)
+
+    # Obtengo todos los 1000 puntos de latitudes y longitudes entre los dos puntos
+
+    num_points = 1000
+    start_yCoord = 0
+    distance_fragment = distance / num_points
+
+    points = get_points_between(start_point['lat'], 
+                                start_point['lng'], 
+                                end_point['lat'], 
+                                end_point['lng'], 
+                                num_points)
+    coordinates = []
+    
+    # Calculo las elevaciones de cada punto
+    # Cargando la imagen tiff respectiva a ese punto geografico
+
+    tiff_image_of_point = [""]
+
+    for lat, lon in points:
+
+        # Busco que tiff file le corresponde al
+        # Punto en el que estoy parado y lo comparo con el archivo
+        # Tiff que tengo cargado en memoria
+
+        # print("Buscando el tiff file para lat ", lat)
+        # print("Buscando el tiff file para lon ", lon)
+
+        tiff_file = find_tiff_file(lat, lon, elevationDataList)
+
+        # print("El tiff file que corresponde con el punto es: ", tiff_file[0])
+
+        # Si el tiff file cambia, cargo el nuevo tiff file en memoria
+        # Para buscar la elevacion en el punto que cae sobre el
+
+        if tiff_image_of_point[0] != tiff_file[0]:
+
+
+            geographicDataSource = rasterio.open('./Venezuela-elevation-data/' + tiff_file[0])
+            elevationData = geographicDataSource.read(1)
+            tiff_image_of_point = tiff_file
+            print("El documento tiff es: " + tiff_image_of_point[0])
+        
+        # Obtengo la elevacion en el archivo tiff que tengo en memoria
+
+        # TODO: En este caso dem es geographicDataSource
+
+        elev = get_elevation(elevationData, lat, lon, geographicDataSource)
+        surfaceCoordinate = {
+            'x': xCoordinate,
+            'y': start_yCoord,
+            'z': int(elev)
+        }
+        coordinates.append(surfaceCoordinate)
+        start_yCoord += distance_fragment
+
+    return {'coordinates': coordinates, 'linkDistance': distance}
+
+def get_parallel_points(start_lat, start_lon, end_lat, end_lon, num_points, distance):
+    # Convertir los puntos de latitud y longitud a radianes
+    start_lat_rad = math.radians(start_lat)
+    start_lon_rad = math.radians(start_lon)
+    end_lat_rad = math.radians(end_lat)
+    end_lon_rad = math.radians(end_lon)
+
+    # Calcular la distancia en radianes entre los puntos
+    d_lat = end_lat_rad - start_lat_rad
+    d_lon = end_lon_rad - start_lon_rad
+
+    # Calcular los incrementos en latitud y longitud
+    lat_increments = numpy.linspace(0, d_lat, num_points)
+    lon_increments = numpy.linspace(0, d_lon, num_points)
+
+    # Calcular los puntos intermedios en la línea principal
+    intermediate_points = []
+    for i in range(num_points):
+        lat = start_lat_rad + lat_increments[i]
+        lon = start_lon_rad + lon_increments[i]
+        intermediate_points.append((math.degrees(lat), math.degrees(lon)))
+
+    # Calcular el vector dirección de la línea principal
+    direction_vector = (end_lat_rad - start_lat_rad, end_lon_rad - start_lon_rad)
+    direction_vector_norm = math.hypot(direction_vector[0], direction_vector[1])
+    direction_vector = (direction_vector[0] / direction_vector_norm, direction_vector[1] / direction_vector_norm)
+
+    # Calcular el vector perpendicular a la línea principal
+    perpendicular_vector = (direction_vector[1], -direction_vector[0])
+
+    # Calcular los puntos paralelos a una distancia "d"
+    parallel_points = []
+    for point in intermediate_points:
+        lat, lon = point
+        lat_rad = math.radians(lat)
+        lon_rad = math.radians(lon)
+
+        # Calcular el desplazamiento en latitud y longitud
+        delta_lat = perpendicular_vector[0] * distance / 6371  # Aproximación de la Tierra como una esfera de radio 6371 km
+        delta_lon = perpendicular_vector[1] * distance / (6371 * math.cos(lat_rad))
+
+        # Calcular la nueva latitud y longitud
+        new_lat = math.degrees(lat_rad + delta_lat)
+        new_lon = math.degrees(lon_rad + delta_lon)
+
+        parallel_points.append((new_lat, new_lon))
+
+    return parallel_points
 
 def find_tiff_files(lat1, lon1, lat2, lon2, tiff_files_list):
     tiff_files_list = []

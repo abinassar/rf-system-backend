@@ -1,7 +1,7 @@
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from elevation import calculate_elevation_profile, get_tiff_bounds, merge_tiff_files
+from elevation import calculate_elevation_profile, get_surface_points, get_tiff_bounds, merge_tiff_files, get_parallel_points
 from atmospherical import attenuationByWaterVapor, GetAtmosphericGasesDataBetween63and350, GetAtmosphericGasesDataMinus57, GetAtmosphericGasesDataBetween57and63
 import rasterio
 import json
@@ -126,6 +126,64 @@ def calculateAtmosphericAtenuation(pressure, temperature):
     
     return {'atenuationsPoints': atenuationsPoints}
 
+def get3dCoordinates(latitude1, longitude1, latitude2, longitude2, tiff_path):
+    # Cargar la imagen TIFF
+    dataset = rasterio.open(tiff_path)
+
+    # Convertir latitud y longitude a coordenadas de píxeles
+    row1, col1 = dataset.index(longitude1, latitude1)
+    row2, col2 = dataset.index(longitude2, latitude2)
+
+    # Leer los valores de los píxeles
+    z = dataset.read(1)  # Lee los valores del primer canal (banda) de la imagen
+    z_values = z[row1:row2+1, col1:col2+1]  # Extrae los valores de los píxeles en el área de interés
+
+    # Crear una malla de coordenadas X e Y
+    x = np.arange(col1, col2+1)  # Coordenadas X
+    y = np.arange(row1, row2+1)  # Coordenadas Y
+    xx, yy = np.meshgrid(x, y)  # Malla de coordenadas X e Y
+
+    # Aplanar las matrices de coordenadas X, Y y valores de píxeles
+    xx = xx.flatten()
+    yy = yy.flatten()
+    zz = z_values.flatten()
+
+    # Crear el objeto con los arreglos de coordenadas
+    coordenadas = {
+        'x': xx.tolist(),
+        'y': yy.tolist(),
+        'z': zz.tolist()
+    }
+
+    print(coordenadas)
+
+    return coordenadas
+
+def obtener_coordenadas_punto(latitud, longitud, tiff_path):
+    # Cargar la imagen TIFF
+    dataset = rasterio.open(tiff_path)
+
+    # Convertir latitud y longitud a coordenadas de píxeles
+    row, col = dataset.index(longitud, latitud)
+
+    # Leer el valor del píxel en el punto especificado
+    z = dataset.read(1)  # Lee los valores del primer canal (banda) de la imagen
+    z_value = z[row, col]
+
+    # Obtener las coordenadas x e y correspondientes al punto
+    x, y = dataset.xy(row, col)
+
+    # Crear el objeto con las coordenadas
+    coordenadas = {
+        'x': x,
+        'y': y,
+        'z': z_value
+    }
+
+    print(coordenadas)
+
+    return coordenadas
+
 @app.route('/get_atmospheric_atenuation_water_vapor', methods=['POST'])
 def getWaterVaporAtenuation():
     
@@ -182,6 +240,40 @@ def merge_tiff_files2():
     })
 
 # Definición de la ruta de la API
+@app.route('/parallel_points', methods=['POST'])
+def parallel_points():
+    
+    # Obtención de los datos de laty lng de los puntos de inicio y fin de la línea de perfil de elevación
+    start_point = request.json['start_point']
+    end_point = request.json['end_point']
+    
+    # Cálculo del perfil de elevación
+    parallel_points = get_parallel_points(start_point['lat'], 
+                                          start_point['lng'], 
+                                          end_point['lat'], 
+                                          end_point['lng'],
+                                          2,
+                                          -20)
+    
+    # Devolución de los datos como un arreglo JSON
+    return jsonify(parallel_points)
+    # return jsonify({'elevations': [300, 400]})
+
+@app.route('/surface_points', methods=['POST'])
+def surface_points():
+    
+    start_point = request.json['start_point']
+    end_point = request.json['end_point']
+    
+    surface_points = get_surface_points(start_point['lat'], 
+                                          start_point['lng'], 
+                                          end_point['lat'], 
+                                          end_point['lng'],
+                                          venezuelaTiffData)
+    
+    # Devolución de los datos como un arreglo JSON
+    return jsonify(surface_points)
+
 @app.route('/elevation_profile', methods=['POST'])
 def elevation_profile():
     
@@ -218,6 +310,16 @@ def getSpecificWaterAtn():
 
     atmosAtn = calculateWaterVaporAtenuation(pressure, temperature, waterDensity, frecuency)
     return jsonify(atmosAtn)
+
+@app.route('/surface-coords', methods=['GET'])
+def getSurfaceCoordinates():
+
+    lat1 = request.json['lat1']
+    lat2 = request.json['lat2']
+    lng1 = request.json['lng1']
+    lng2 = request.json['lng2']
+
+
 
 @app.route("/")
 def main_():
