@@ -1,9 +1,12 @@
+from itur.utils import (prepare_input_array, prepare_quantity, load_data,
+                        prepare_output_array, dataset_dir, get_input_type)
 import rasterio
 import math
 import numpy
 from rasterio.merge import merge
 from numpy import cos, radians, sin, sqrt, linspace, degrees
 from math import atan2
+from astropy import units as u
 
 # Ruta al archivo GeoTIFF de elevación descargado
 DEM_FILE_PATH = './elevation-profile-data/elevation-profile-Venezuela.tif'
@@ -361,3 +364,35 @@ def calculate_distance(start_point, end_point):
     
     # Devolución de la distancia en kilómetros
     return distance
+
+def radio_refractive_index(Pd, e, T):
+    """Compute the radio refractive index.
+
+    Parameters
+    ----------
+    Pd : number or Quantity
+        Dry atmospheric pressure (hPa)
+    e : number or Quantity
+        Water vapour pressure  (hPa)
+    T : number or Quantity
+        Absolute temperature (K)
+
+
+    Returns
+    -------
+    n: Quantity
+        Radio refractive index (-)
+
+
+
+    References
+    ----------
+    [1] The radio refractive index: its formula and refractivity data
+    https://www.itu.int/rec/R-REC-P.453/en
+
+    """
+    Pd = prepare_quantity(Pd, u.hPa, 'Dry atmospheric pressure')
+    e = prepare_quantity(e, u.hPa, 'Water vapour pressure ')
+    T = prepare_quantity(T, u.K, 'Absolute temperature')
+    val = __model.radio_refractive_index(Pd, e, T)
+    return val * u.dimensionless_unscaled

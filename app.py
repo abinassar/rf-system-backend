@@ -274,6 +274,21 @@ def surface_points():
     # Devolución de los datos como un arreglo JSON
     return jsonify(surface_points)
 
+@app.route('/k_factor', methods=['POST'])
+def surface_points():
+    
+    start_point = request.json['start_point']
+    end_point = request.json['end_point']
+    
+    surface_points = get_surface_points(start_point['lat'], 
+                                          start_point['lng'], 
+                                          end_point['lat'], 
+                                          end_point['lng'],
+                                          venezuelaTiffData)
+    
+    # Devolución de los datos como un arreglo JSON
+    return jsonify(surface_points)
+
 @app.route('/elevation_profile', methods=['POST'])
 def elevation_profile():
     
