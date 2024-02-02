@@ -59,6 +59,8 @@ venezuelaTiffData = get_tiff_data('./Venezuela-elevation-data')
 CORS(app)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+refrectividad_delta = radio_refractive_index(1015.7, , 69)
+
 def calculateAtenuationInFrecuency(pressure, temperature, frecuency):
 
     atenuationValue = 0;
