@@ -59,7 +59,7 @@ venezuelaTiffData = get_tiff_data('./Venezuela-elevation-data')
 CORS(app)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-refrectividad_delta = radio_refractive_index(1015.7, , 69)
+# refrectividad_delta = radio_refractive_index(1015.7, , 69)
 
 def calculateAtenuationInFrecuency(pressure, temperature, frecuency):
 
@@ -262,21 +262,6 @@ def parallel_points():
     # return jsonify({'elevations': [300, 400]})
 
 @app.route('/surface_points', methods=['POST'])
-def surface_points():
-    
-    start_point = request.json['start_point']
-    end_point = request.json['end_point']
-    
-    surface_points = get_surface_points(start_point['lat'], 
-                                          start_point['lng'], 
-                                          end_point['lat'], 
-                                          end_point['lng'],
-                                          venezuelaTiffData)
-    
-    # Devolución de los datos como un arreglo JSON
-    return jsonify(surface_points)
-
-@app.route('/k_factor', methods=['POST'])
 def surface_points():
     
     start_point = request.json['start_point']
