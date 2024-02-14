@@ -44,7 +44,31 @@ def calculate_elevation_profile(start_point,
                                 elevationDataList):
     
     # Cálculo de la distancia entre los dos puntos
-    distance = calculate_distance(start_point, end_point)
+    # distance = calculate_distance(start_point, end_point)
+    distance = calcular_distancia_linea_recta(start_point['lat'], 
+                                        start_point['lng'], 
+                                        100,
+                                        end_point['lat'],
+                                        end_point['lng'],
+                                        100)
+
+    # Calc distance between the point a and b 
+    # Around the sphere
+
+    # curve_distance = haversine([start_point['lng'], 
+    #                             start_point['lat']], 
+    #                             [end_point['lng'], 
+    #                             end_point['lat']])
+
+    curve_distance = calcular_distancia(start_point['lat'], 
+                                        start_point['lng'], 
+                                        end_point['lat'],
+                                        end_point['lng'])
+
+    distance_reflection = calculateReflectionPoint(curve_distance,
+                                                   1.33,
+                                                   100,
+                                                   100)
 
     # Obtengo todos los 1000 puntos de latitudes y longitudes entre los dos puntos
 
@@ -93,7 +117,10 @@ def calculate_elevation_profile(start_point,
         elev = get_elevation(elevationData, lat, lon, geographicDataSource)
         elevations.append(int(elev))
 
-    return {'elevations': elevations, 'linkDistance': distance}
+    return {'elevations': elevations, 
+            'linkDistance': distance,
+            'curve_distance': curve_distance,
+            'distance_reflection': distance_reflection}
 
 def get_surface_points(lat1,
                        lng1,
@@ -343,7 +370,7 @@ def merge_tiff_files(tiff_files, output_file):
     with rasterio.open(output_file, "w", **out_meta) as dest:
         dest.write(mosaic)
 
-# Definición de la función que calcula la distancia entre dos puntos de latitud y longitud
+# Definición de la función que calcula la distancia entre dos puntos de latitud y longitud en linea recta
 def calculate_distance(start_point, end_point):
     # Conversión de las coordenadas de latitud y longitud a radianes
     lat1 = radians(start_point['lat'])
@@ -361,3 +388,99 @@ def calculate_distance(start_point, end_point):
     
     # Devolución de la distancia en kilómetros
     return distance
+
+# Haversine function to get distance around the sphere
+
+def haversine(coord1: object, coord2: object):
+    import math
+
+    # Coordinates in decimal degrees (e.g. 2.89078, 12.79797)
+    lon1, lat1 = coord1
+    lon2, lat2 = coord2
+
+    R = 6371000  # radius of Earth in meters
+    phi_1 = math.radians(lat1)
+    phi_2 = math.radians(lat2)
+
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi_1) * math.cos(phi_2) * math.sin(delta_lambda / 2.0) ** 2
+    
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    meters = R * c  # output distance in meters
+    km = meters / 1000.0  # output distance in kilometers
+
+    meters = round(meters, 3)
+    km = round(km, 3)
+    return km
+
+def calcular_distancia(latitud_a, longitud_a, latitud_b, longitud_b):
+    radio_tierra = 6371  # Radio promedio de la Tierra en kilómetros
+
+    # Convertir las coordenadas de grados a radianes
+    latitud_a_rad = math.radians(latitud_a)
+    longitud_a_rad = math.radians(longitud_a)
+    latitud_b_rad = math.radians(latitud_b)
+    longitud_b_rad = math.radians(longitud_b)
+
+    # Diferencia de longitudes y latitudes
+    dif_latitudes = latitud_b_rad - latitud_a_rad
+    dif_longitudes = longitud_b_rad - longitud_a_rad
+
+    # Fórmula de Haversine
+    a = math.sin(dif_latitudes/2)**2 + math.cos(latitud_a_rad) * math.cos(latitud_b_rad) * math.sin(dif_longitudes/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    distancia = radio_tierra * c
+
+    return distancia
+
+# Las alturas estan expresadas en meters
+def calcular_distancia_linea_recta(latitud_a, longitud_a, altura_a, latitud_b, longitud_b, altura_b):
+    radio_tierra = 6371  # Radio promedio de la Tierra en kilómetros
+
+    # Convertir las coordenadas de grados a radianes
+    latitud_a_rad = math.radians(latitud_a)
+    longitud_a_rad = math.radians(longitud_a)
+    latitud_b_rad = math.radians(latitud_b)
+    longitud_b_rad = math.radians(longitud_b)
+
+    # Convertir la altura de metros a kilómetros
+    altura_a_km = altura_a / 1000
+    altura_b_km = altura_b / 1000
+
+    # Distancia horizontal en el plano terrestre
+    distancia_horizontal = radio_tierra * math.acos(
+        math.sin(latitud_a_rad) * math.sin(latitud_b_rad) +
+        math.cos(latitud_a_rad) * math.cos(latitud_b_rad) *
+        math.cos(longitud_b_rad - longitud_a_rad)
+    )
+
+    # Distancia en línea recta considerando la diferencia de alturas
+    distancia_linea_recta = math.sqrt(distancia_horizontal**2 + (altura_b_km - altura_a_km)**2)
+
+    return distancia_linea_recta
+
+def calculateReflectionPoint(distance,
+                           k_factor,
+                           antenna1_height,
+                           antenna2_height):
+    
+    earth_effective_radio = k_factor * 6371
+
+    m = (pow(distance, 2)) / (4 * earth_effective_radio * (antenna1_height + antenna2_height))
+    
+    c = 0
+
+    if antenna1_height > antenna2_height:
+        c = (antenna1_height - antenna2_height) / (antenna1_height + antenna2_height)
+    else:
+        c = (antenna2_height - antenna1_height) / (antenna1_height + antenna2_height)
+
+    b = 2 * math.sqrt((m + 1) / 3 * m) * math.cos(((math.pi/3) + (math.acos(((3 * c) / 2) * math.sqrt((3 * m) / pow(m + 1, 3))))))
+
+    d1 = (distance * (1 + b)) / 2
+
+    return d1
+
