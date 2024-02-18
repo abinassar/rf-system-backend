@@ -119,8 +119,8 @@ def calculate_elevation_profile(start_point,
 
     return {'elevations': elevations, 
             'linkDistance': distance,
-            'curve_distance': curve_distance,
-            'distance_reflection': distance_reflection}
+            'curveDistance': curve_distance,
+            'reflectionDistance': distance_reflection}
 
 def get_surface_points(lat1,
                        lng1,
