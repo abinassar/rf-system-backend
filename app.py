@@ -1,7 +1,7 @@
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from elevation import calculate_elevation_profile, get_surface_points, get_tiff_bounds, merge_tiff_files, get_parallel_points
+from elevation import calculate_azimuth, calculate_elevation_profile, get_surface_points, get_tiff_bounds, merge_tiff_files, get_parallel_points
 from atmospherical import attenuationByWaterVapor, GetAtmosphericGasesDataBetween63and350, GetAtmosphericGasesDataMinus57, GetAtmosphericGasesDataBetween57and63
 import rasterio
 import json
@@ -321,6 +321,23 @@ def getSurfaceCoordinates():
     lng1 = request.json['lng1']
     lng2 = request.json['lng2']
 
+@app.route('/get_azimuth', methods=['POST'])
+def get_azimuth():
+    
+    # Obtención de los datos de laty lng de los puntos de inicio y fin de la línea de perfil de elevación
+    start_point = request.json['start_point']
+    start_height = request.json['start_height']
+    end_point = request.json['end_point']
+    end_height = request.json['end_height']
+
+    azimuth = calculate_azimuth(start_point['lat'], 
+                                start_point['lng'],
+                                start_height, 
+                                end_point['lat'], 
+                                end_point['lng'],
+                                end_height)
+
+    return azimuth
 
 
 @app.route("/")

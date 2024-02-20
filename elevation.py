@@ -4,6 +4,7 @@ import numpy
 from rasterio.merge import merge
 from numpy import cos, radians, sin, sqrt, linspace, degrees
 from math import atan2
+from AltAzRange import AltAzimuthRange
 
 # Ruta al archivo GeoTIFF de elevación descargado
 DEM_FILE_PATH = './elevation-profile-data/elevation-profile-Venezuela.tif'
@@ -484,3 +485,16 @@ def calculateReflectionPoint(distance,
 
     return d1
 
+def calculate_azimuth(obsLat,
+                     obsLng,
+                     obsHeight,
+                     targetLat,
+                     targetLng,
+                     targetHeight):
+    
+    satellite = AltAzimuthRange()
+    satellite.observer(obsLat, obsLng, obsHeight)
+    satellite.target(targetLat, targetLng, targetHeight)
+    
+    data = satellite.calculate()
+    return data
