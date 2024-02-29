@@ -7,10 +7,6 @@ import rasterio
 import json
 import os
 import numpy as np
-import rasterio
-import urllib.request
-import json
-import math
 
 # Ruta al archivo GeoTIFF de elevación descargado
 
@@ -282,11 +278,15 @@ def elevation_profile():
     # Obtención de los datos de laty lng de los puntos de inicio y fin de la línea de perfil de elevación
     start_point = request.json['start_point']
     end_point = request.json['end_point']
+    antenna_1_height = request.json['antenna_1_height']
+    antenna_2_height = request.json['antenna_2_height']
     
     # Cálculo del perfil de elevación
     elevation_profile = calculate_elevation_profile(start_point, 
                                                     end_point,
-                                                    venezuelaTiffData)
+                                                    venezuelaTiffData,
+                                                    antenna_1_height,
+                                                    antenna_2_height)
     
     # Devolución de los datos como un arreglo JSON
     return jsonify(elevation_profile)

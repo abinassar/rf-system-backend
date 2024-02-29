@@ -42,16 +42,32 @@ def get_points_between(start_lat,
 # Definición de la función que calcula el perfil de elevación
 def calculate_elevation_profile(start_point, 
                                 end_point,
-                                elevationDataList):
+                                elevationDataList,
+                                height_antenna_1,
+                                height_antenna_2):
     
+    azimuth_antenna_1 = calculate_azimuth(start_point['lat'], 
+                                        start_point['lng'],
+                                        height_antenna_1, 
+                                        end_point['lat'], 
+                                        end_point['lng'],
+                                        height_antenna_2)
+
+    azimuth_antenna_2 = calculate_azimuth(end_point['lat'], 
+                                        end_point['lng'],
+                                        height_antenna_2,
+                                        start_point['lat'], 
+                                        start_point['lng'],
+                                        height_antenna_1)
+
     # Cálculo de la distancia entre los dos puntos
     # distance = calculate_distance(start_point, end_point)
     distance = calcular_distancia_linea_recta(start_point['lat'], 
-                                        start_point['lng'], 
-                                        100,
-                                        end_point['lat'],
-                                        end_point['lng'],
-                                        100)
+                                              start_point['lng'], 
+                                              100,
+                                              end_point['lat'],
+                                              end_point['lng'],
+                                              100)
 
     # Calc distance between the point a and b 
     # Around the sphere
@@ -121,7 +137,9 @@ def calculate_elevation_profile(start_point,
     return {'elevations': elevations, 
             'linkDistance': distance,
             'curveDistance': curve_distance,
-            'reflectionDistance': distance_reflection}
+            'reflectionDistance': distance_reflection,
+            'azimuthAntenna1': azimuth_antenna_1,
+            'azimuthAntenna2': azimuth_antenna_2}
 
 def get_surface_points(lat1,
                        lng1,
